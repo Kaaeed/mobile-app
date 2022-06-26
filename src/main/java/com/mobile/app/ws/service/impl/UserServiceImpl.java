@@ -1,15 +1,18 @@
 package com.mobile.app.ws.service.impl;
 
-import com.mobile.app.ws.UserRepository;
+import com.mobile.app.ws.io.repositories.UserRepository;
 import com.mobile.app.ws.io.entity.UserEntity;
 import com.mobile.app.ws.service.UserService;
 import com.mobile.app.ws.shared.Utils;
 import com.mobile.app.ws.shared.dto.UserDto;
 import org.springframework.beans.BeanUtils;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
 
 @Service
 public class UserServiceImpl implements UserService {
@@ -43,7 +46,33 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        return null;
+    public UserDto getUser(String email) {
+        UserEntity userEntity = this.repository.findByEmail(email);
+
+        if(userEntity == null) throw new UsernameNotFoundException(email);
+
+        UserDto returnValue = new UserDto();
+        BeanUtils.copyProperties(userEntity, returnValue);
+        return returnValue;
+    }
+
+    @Override
+    public UserDto getUserByUserId(String userId) {
+        UserEntity userEntity = this.repository.findByUserId(userId);
+
+        if(userEntity == null) throw new UsernameNotFoundException(userId);
+
+        UserDto returnValue = new UserDto();
+        BeanUtils.copyProperties(userEntity, returnValue);
+        return returnValue;
+    }
+
+    @Override // this method will help spring load user details when it needs, this method will be used in the process of user sign in
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        UserEntity userEntity = this.repository.findByEmail(email);
+
+        if(userEntity == null) throw new UsernameNotFoundException(email);
+
+        return new User(userEntity.getEmail(), userEntity.getEncryptedPassword(), new ArrayList<>());
     }
 }

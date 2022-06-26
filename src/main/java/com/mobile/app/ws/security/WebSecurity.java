@@ -10,6 +10,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -56,17 +57,29 @@ public class WebSecurity extends WebSecurityConfigurerAdapter{
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
     }
 
-    @Override
+    @Override // we are creating filter chain in this method
     protected void configure(HttpSecurity http) throws Exception { // to configure webservice entry points
         http.csrf().disable()
                 .authorizeRequests()
-                .antMatchers(HttpMethod.POST, "/users") // POST at /users will all be permitted
+                .antMatchers(HttpMethod.POST, SecurityConstants.SIGN_UP_URL) // POST at /users will all be permitted
                 .permitAll()
-                .anyRequest().authenticated(); // everything else will need to be authenticated
+                .anyRequest().authenticated() // everything else will need to be authenticated
+                .and().addFilter(getAuthenticationFilter()) // authenticate through our filter
+                .addFilter(new AuthorizationFilter(authenticationManager()))
+                .sessionManagement() // We prevent creation of http sessions, so our API becomes stateless
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS);
     }
 
     @Override
     public void configure(AuthenticationManagerBuilder auth) throws Exception { // setting up authentication manager builder
+        // userDetailsService interface helps spring to load user details from our database, with the help of provided password encoder
         auth.userDetailsService(userService).passwordEncoder(bCryptPasswordEncoder);
+    }
+
+    public AuthenticationFilter getAuthenticationFilter() throws Exception {
+        final AuthenticationFilter filter = new AuthenticationFilter(authenticationManager());
+        filter.setFilterProcessesUrl("/users/login"); // instead of default /login we specified url to /users/login
+        // old default /login url does not work any more
+        return filter;
     }
 }
