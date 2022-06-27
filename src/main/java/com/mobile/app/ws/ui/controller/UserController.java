@@ -1,10 +1,13 @@
 package com.mobile.app.ws.ui.controller;
 
+import com.mobile.app.ws.exceptions.UserServiceException;
 import com.mobile.app.ws.service.UserService;
 import com.mobile.app.ws.shared.dto.UserDto;
 import com.mobile.app.ws.ui.model.request.UserDetailsRequestModel;
+import com.mobile.app.ws.ui.model.response.ErrorMessages;
 import com.mobile.app.ws.ui.model.response.UserRest;
 import org.springframework.beans.BeanUtils;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,16 +19,20 @@ public class UserController {
         this.userService = userService;
     }
 
-    @GetMapping("/{id}")
-    public UserRest getUser(@PathVariable String id){
+    @GetMapping("/{id}") // (/{id}, produces= MediaType.APPLICATION_XML_VALUE) server will send responses in XML,
+    public UserRest getUser(@PathVariable String id){   // but if app requests JSON it will get an error
         UserRest returnValue = new UserRest();
         UserDto userDto = this.userService.getUserByUserId(id);
         BeanUtils.copyProperties(userDto, returnValue);
         return returnValue;
     }
 
-    @PostMapping
-    public UserRest createUser(@RequestBody UserDetailsRequestModel userDetails){
+    // Same as we can specify produces, we also can specify consumes
+    @PostMapping (consumes = {MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE})
+    public UserRest createUser(@RequestBody UserDetailsRequestModel userDetails) throws Exception{
+        if(userDetails.getFirstName().isEmpty())
+            throw new UserServiceException(ErrorMessages.MISSING_REQUIRED_FIELD.getErrorMessage());
+
         UserRest returnValue = new UserRest();
 
         UserDto userDto = new UserDto();
