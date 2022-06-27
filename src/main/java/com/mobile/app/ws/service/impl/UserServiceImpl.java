@@ -1,10 +1,12 @@
 package com.mobile.app.ws.service.impl;
 
+import com.mobile.app.ws.exceptions.UserServiceException;
 import com.mobile.app.ws.io.repositories.UserRepository;
 import com.mobile.app.ws.io.entity.UserEntity;
 import com.mobile.app.ws.service.UserService;
 import com.mobile.app.ws.shared.Utils;
 import com.mobile.app.ws.shared.dto.UserDto;
+import com.mobile.app.ws.ui.model.response.ErrorMessages;
 import org.springframework.beans.BeanUtils;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -60,11 +62,36 @@ public class UserServiceImpl implements UserService {
     public UserDto getUserByUserId(String userId) {
         UserEntity userEntity = this.repository.findByUserId(userId);
 
-        if(userEntity == null) throw new UsernameNotFoundException(userId);
+        if(userEntity == null) throw new UsernameNotFoundException("User with ID:" + userId + " not found.");
 
         UserDto returnValue = new UserDto();
         BeanUtils.copyProperties(userEntity, returnValue);
         return returnValue;
+    }
+
+    @Override
+    public UserDto updateUser(UserDto user, String userId) {
+        UserEntity userEntity = this.repository.findByUserId(userId);
+
+        if(userEntity == null) throw new UserServiceException(ErrorMessages.NO_RECORD_FOUND.getErrorMessage());
+
+        userEntity.setFirstName(user.getFirstName());
+        userEntity.setLastName(user.getLastName());
+
+        UserEntity updatedUser = this.repository.save(userEntity);
+
+        UserDto returnValue = new UserDto();
+        BeanUtils.copyProperties(updatedUser, returnValue);
+        return returnValue;
+    }
+
+    @Override
+    public void deleteUserById(String userId) {
+        UserEntity userEntity = this.repository.findByUserId(userId);
+
+        if(userEntity == null) throw new UserServiceException(ErrorMessages.NO_RECORD_FOUND.getErrorMessage());
+
+        this.repository.delete(userEntity);
     }
 
     @Override // this method will help spring load user details when it needs, this method will be used in the process of user sign in

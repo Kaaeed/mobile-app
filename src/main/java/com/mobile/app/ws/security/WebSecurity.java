@@ -79,7 +79,7 @@ public class WebSecurity extends WebSecurityConfigurerAdapter{
     public AuthenticationFilter getAuthenticationFilter() throws Exception {
         final AuthenticationFilter filter = new AuthenticationFilter(authenticationManager());
         filter.setFilterProcessesUrl("/users/login"); // instead of default /login we specified url to /users/login
-        // old default /login url does not work any more
+        // old default /login url does not work anymore
         return filter;
     }
 }
