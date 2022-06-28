@@ -21,4 +21,6 @@ server:
     include-binding-errors: always
     include-stacktrace: on_param
     include-exception: false
+  servlet:
+    context-path: /mobile-app-ws
 tokenSecret: jf9i4jgu83nfl0
