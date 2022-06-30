@@ -1,6 +1,7 @@
 package com.mobile.app.ws;
 
 import com.mobile.app.ws.security.AppProperties;
+import org.modelmapper.ModelMapper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
@@ -11,6 +12,11 @@ public class MobileAppWsApplication {
 
     public static void main(String[] args) {
         SpringApplication.run(MobileAppWsApplication.class, args);
+    }
+
+    @Bean
+    public ModelMapper getModelMapper(){
+        return new ModelMapper();
     }
 
     @Bean

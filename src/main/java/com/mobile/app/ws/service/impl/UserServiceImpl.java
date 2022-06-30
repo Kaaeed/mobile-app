@@ -5,8 +5,10 @@ import com.mobile.app.ws.io.repositories.UserRepository;
 import com.mobile.app.ws.io.entity.UserEntity;
 import com.mobile.app.ws.service.UserService;
 import com.mobile.app.ws.shared.Utils;
+import com.mobile.app.ws.shared.dto.AddressDto;
 import com.mobile.app.ws.shared.dto.UserDto;
 import com.mobile.app.ws.ui.model.response.ErrorMessages;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.BeanUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -22,14 +24,18 @@ import java.util.List;
 
 @Service
 public class UserServiceImpl implements UserService {
-    UserRepository repository;
-    Utils utils;
-    BCryptPasswordEncoder bCryptPasswordEncoder;
+    private UserRepository repository;
+    private Utils utils;
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
+    private ModelMapper modelMapper;
 
-    public UserServiceImpl(UserRepository repository, Utils utils, BCryptPasswordEncoder bCryptPasswordEncoder){
+
+    public UserServiceImpl(UserRepository repository, Utils utils,
+                           BCryptPasswordEncoder bCryptPasswordEncoder, ModelMapper modelMapper){
         this.repository = repository;
         this.utils = utils;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+        this.modelMapper = modelMapper;
     }
 
     @Override
@@ -37,18 +43,22 @@ public class UserServiceImpl implements UserService {
 
         if(this.repository.findByEmail(user.getEmail()) != null) throw new RuntimeException("Record already exists");
 
-        UserEntity userEntity = new UserEntity();
-        BeanUtils.copyProperties(user, userEntity);
+        for(int i = 0; i < user.getAddresses().size(); i++){
+            AddressDto address = user.getAddresses().get(i);
+            address.setUserDetails(user);
+            address.setAddressId(utils.generateAddressId(30));
+            user.getAddresses().set(i, address);
+        }
+
+        UserEntity userEntity =  this.modelMapper.map(user, UserEntity.class);
 
         userEntity.setUserId(this.utils.generateUserId(30));
         userEntity.setEncryptedPassword(this.bCryptPasswordEncoder.encode(user.getPassword()));
 
         UserEntity storedUserDetails = this.repository.save(userEntity);
 
-        UserDto returnValue = new UserDto();
-        BeanUtils.copyProperties(storedUserDetails, returnValue);
-
-        return returnValue;
+        // Returns UserDto object
+        return this.modelMapper.map(storedUserDetails, UserDto.class);
     }
 
     @Override

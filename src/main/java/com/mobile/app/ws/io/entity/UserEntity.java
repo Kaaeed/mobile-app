@@ -4,11 +4,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.Id;
+import javax.persistence.*;
 import java.io.Serializable;
+import java.util.List;
 
 @Entity(name = "users")
 @Getter
@@ -21,7 +19,7 @@ public class UserEntity implements Serializable {
     private long id;
 
     @Column(nullable = false)
-    private String userId;
+    private String userId;  // ID to share publicly
 
     @Column(nullable = false, length = 50)
     private String firstName;
@@ -39,4 +37,7 @@ public class UserEntity implements Serializable {
 
     @Column(nullable = false)
     private Boolean emailVerificationStatus = false;
+
+    @OneToMany(mappedBy = "userDetails", cascade = CascadeType.ALL)
+    private List<AddressEntity> addresses;
 }

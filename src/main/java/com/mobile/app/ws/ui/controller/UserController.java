@@ -1,24 +1,34 @@
 package com.mobile.app.ws.ui.controller;
 
 import com.mobile.app.ws.exceptions.UserServiceException;
+import com.mobile.app.ws.service.AddressService;
 import com.mobile.app.ws.service.UserService;
+import com.mobile.app.ws.shared.dto.AddressDto;
 import com.mobile.app.ws.shared.dto.UserDto;
 import com.mobile.app.ws.ui.model.request.UserDetailsRequestModel;
 import com.mobile.app.ws.ui.model.response.*;
+import net.bytebuddy.description.method.MethodDescription;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeToken;
 import org.springframework.beans.BeanUtils;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
 @RestController
-@RequestMapping("users") // http://localhost:8080/users
+@RequestMapping("users") // http://localhost:8080/mobile-app-ws/users
 public class UserController {
     private UserService userService;
+    private ModelMapper modelMapper;
+    private AddressService addressesService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, ModelMapper modelMapper, AddressService addressesService) {
         this.userService = userService;
+        this.modelMapper = modelMapper;
+        this.addressesService = addressesService;
     }
 
     @GetMapping("/{id}") // (/{id}, produces= MediaType.APPLICATION_XML_VALUE) server will send responses in XML,
@@ -46,21 +56,43 @@ public class UserController {
         return returnValue;
     }
 
+    @GetMapping(path = "{id}/addresses",
+            produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
+            )
+    public List<AddressesRest> getUserAddresses(@PathVariable String id){
+        List<AddressesRest> returnValue = new ArrayList<>();
+
+        List<AddressDto> addressesDto = this.addressesService.getAddresses(id);
+
+        if(addressesDto != null && !addressesDto.isEmpty()){
+            Type listType = new TypeToken<List<AddressesRest>>() {}.getType();
+            returnValue = this.modelMapper.map(addressesDto, listType);
+        }
+
+        return returnValue;
+    }
+
+    @GetMapping(path = "{userId}/addresses/{addressId}",
+            produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
+            )
+    public AddressesRest getUserAddress(@PathVariable String userId, @PathVariable String addressId){
+        AddressDto addressDto = this.addressesService.getAddress(addressId);
+
+        return this.modelMapper.map(addressDto, AddressesRest.class);
+    }
+
     // Same as we can specify produces, we also can specify consumes
     @PostMapping(consumes = {MediaType.APPLICATION_XML_VALUE, MediaType.APPLICATION_JSON_VALUE})
     public UserRest createUser(@RequestBody UserDetailsRequestModel userDetails) throws Exception {
         if (userDetails.getFirstName().isEmpty())
             throw new UserServiceException(ErrorMessages.MISSING_REQUIRED_FIELD.getErrorMessage());
 
-        UserRest returnValue = new UserRest();
-
-        UserDto userDto = new UserDto();
-        BeanUtils.copyProperties(userDetails, userDto);
+        // Model mapper creates better deeper copies than BeanUtil.copyProperties
+        UserDto userDto = this.modelMapper.map(userDetails, UserDto.class);
 
         UserDto createdUser = userService.createUser(userDto);
-        BeanUtils.copyProperties(createdUser, returnValue);
 
-        return returnValue;
+        return this.modelMapper.map(createdUser, UserRest.class);
     }
 
     @PutMapping(
