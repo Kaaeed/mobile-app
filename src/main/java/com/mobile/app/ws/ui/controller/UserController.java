@@ -11,11 +11,16 @@ import net.bytebuddy.description.method.MethodDescription;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.TypeToken;
 import org.springframework.beans.BeanUtils;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.Link;
+import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
@@ -59,7 +64,7 @@ public class UserController {
     @GetMapping(path = "{id}/addresses",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
             )
-    public List<AddressesRest> getUserAddresses(@PathVariable String id){
+    public CollectionModel<AddressesRest> getUserAddresses(@PathVariable String id){
         List<AddressesRest> returnValue = new ArrayList<>();
 
         List<AddressDto> addressesDto = this.addressesService.getAddresses(id);
@@ -67,18 +72,45 @@ public class UserController {
         if(addressesDto != null && !addressesDto.isEmpty()){
             Type listType = new TypeToken<List<AddressesRest>>() {}.getType();
             returnValue = this.modelMapper.map(addressesDto, listType);
+
+            for(AddressesRest addressRest : returnValue){
+                Link selfLink = WebMvcLinkBuilder
+                        .linkTo(WebMvcLinkBuilder.methodOn(UserController.class)
+                                .getUserAddress(id, addressRest.getAddressId()))
+                        .withSelfRel();
+                addressRest.add(selfLink);
+            }
         }
 
-        return returnValue;
+        Link userLink = WebMvcLinkBuilder.linkTo(UserController.class).slash(id).withRel("user");
+        Link selfLink = WebMvcLinkBuilder
+                .linkTo(WebMvcLinkBuilder.methodOn(UserController.class).getUserAddresses(id))
+                .withSelfRel();
+
+        return CollectionModel.of(returnValue, userLink, selfLink);
     }
 
     @GetMapping(path = "{userId}/addresses/{addressId}",
             produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE}
             )
-    public AddressesRest getUserAddress(@PathVariable String userId, @PathVariable String addressId){
+    public EntityModel<AddressesRest> getUserAddress(@PathVariable String userId, @PathVariable String addressId){
         AddressDto addressDto = this.addressesService.getAddress(addressId);
 
-        return this.modelMapper.map(addressDto, AddressesRest.class);
+        AddressesRest returnValue = this.modelMapper.map(addressDto, AddressesRest.class);
+
+        // http://localhost:8080/users/{userId}
+        // this method will produce link above
+        Link userLink = WebMvcLinkBuilder.linkTo(UserController.class).slash(userId).withRel("user");
+        // http://localhost:8080/users/{userId}/addresses
+        Link userAddressesLink = WebMvcLinkBuilder
+                .linkTo(WebMvcLinkBuilder.methodOn(UserController.class).getUserAddresses(userId))
+                .withRel("addresses");
+        // http://localhost:8080/users/{userId}/addresses/{addressId}
+        Link selfLink = WebMvcLinkBuilder
+                .linkTo(WebMvcLinkBuilder.methodOn(UserController.class).getUserAddress(userId, addressId))
+                .withSelfRel();
+
+        return EntityModel.of(returnValue, Arrays.asList(userLink, userAddressesLink, selfLink));
     }
 
     // Same as we can specify produces, we also can specify consumes
